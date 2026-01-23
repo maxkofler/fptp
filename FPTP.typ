@@ -1,7 +1,7 @@
 #set page(
   paper: "a4",
   header: align(left)[
-    The SETP Protocol
+    The FPTP Protocol
   ],
 )
 
@@ -9,6 +9,9 @@
 #show heading: set text(size: 20pt)
 #show heading.where(level: 1): set text(size: 35pt)
 #show heading.where(level: 2): set text(size: 25pt)
+#show link: it => underline(text(fill: blue)[#it])
+#show raw: it => { highlight(it, fill: rgb("ddd"), radius: 2pt, extent: 0.5pt, top-edge: 1.1em, bottom-edge: -0.3em) }
+
 
 #set text(
   size: 14pt,
@@ -47,13 +50,17 @@ In this document, the `Rust` syntax is used for describing data types, as its sy
 FPTP is engineered and designed to allow tunneling of various protocols over it to extend their use.
 The prime example (and idea source) is tunneling IEEE 802.3 (Ethernet) over a TCP connection.
 
-The protocol is designed in a way, that it can accommodate multiple channels to allow for tunneling of multiple protocols and instances thereof.
+The protocol is designed in such a way, so that it can accommodate multiple channels to allow for tunneling of multiple protocols and instances thereof.
 To achieve this, the server instance presents a list of services that can be mapped to channels of the connection.
 Each service has its own UUID that can be mapped onto one of 256 channels per connection.
 
 == Endianness
 
 All multi-byte values in this protocol are transmitted in *Little Endian*  form.
+
+== Numbering
+
+All numberings and indices start at `0`, as is common in programming terminology.
 
 = Streaming Mode
 
@@ -72,16 +79,19 @@ The following table shows the overall message structure that is valid for all me
 
 #table(
   columns: 3,
-  [Position], [1], [n],
+  [Position], [0], [n],
   [Type], [`u8`], [`[u8]`],
-  [Value], [Message ID], [Message Data],
+  [Name], [ID], [Message Data],
 )
+
+The `ID` field identifies the message that is delivered on in this frame to allow the receiver to interpret it accordingly.
 
 == Messages
 
-The following messages are available:
+The following message `ID`s are available:
 
-- #link(<streaming-message-ping>)[`0x00` - Ping]
+- #link(<streaming-message-ping-request>)[`0x01` - Ping Request]
+- #link(<streaming-message-ping-response>)[`0x02` - Ping Response]
 
 - Ping
 - Service List
@@ -90,6 +100,32 @@ The following messages are available:
 
 - Channel Data
 
-=== `0x00` - Ping <streaming-message-ping>
+=== `0x01` - Ping Request <streaming-message-ping-request>
 
-The ping command allows a device to check presence of another one and to
+The Ping Request command allows one side of the connection to check presence of another peer, measure roundtrip times, etc. without any other side effects.
+A requirement of this message is that is must not have any side effects on the sending and receiving side, allowing these messages to be sprinkled into the normal communication flow without the possibility of disrupting anything other.
+
+#table(
+  columns: 4,
+  [Position], [0], [1], [n],
+  [Type], [`u8`], [`u8`], [`[u8]`],
+  [Value], [`0x01`], [?], [?],
+  [Name], [ID], [Length], [Payload],
+)
+
+The Ping message allows for up to 255 bytes of arbitrary payload to be sent with it.
+The other peer will respond with a #link(<streaming-message-ping-response>)[Ping Response] that will include an exact copy of the payload data sent in the request.
+
+=== `0x02` - Ping Response <streaming-message-ping-response>
+
+This message is the response to the #link(<streaming-message-ping-request>)[Ping Request] message.
+It confirms presence and activity to the requesting peer.
+The contents of the request `Payload` field must be mirrored exactly.
+
+#table(
+  columns: 4,
+  [Position], [0], [1], [n],
+  [Type], [`u8`], [`u8`], [`[u8]`],
+  [Value], [`0x01`], [?], [?],
+  [Name], [ID], [Length], [Payload],
+)

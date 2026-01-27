@@ -5,16 +5,16 @@
   ],
 )
 
-#show title: set text(size: 50pt)
-#show heading: set text(size: 20pt)
-#show heading.where(level: 1): set text(size: 35pt)
-#show heading.where(level: 2): set text(size: 25pt)
+#show title: set text(size: 40pt)
+#show heading: set text(size: 15pt)
+#show heading.where(level: 1): set text(size: 25pt)
+#show heading.where(level: 2): set text(size: 20pt)
 #show link: it => underline(text(fill: blue)[#it])
 #show raw: it => { highlight(it, fill: rgb("ddd"), radius: 2pt, extent: 0.5pt, top-edge: 1.1em, bottom-edge: -0.3em) }
 
 
 #set text(
-  size: 14pt,
+  size: 10pt,
 )
 
 #set heading(

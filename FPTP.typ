@@ -80,7 +80,7 @@ The following table shows the overall message structure that is valid for all me
 #table(
   columns: 3,
   [Position], [0], [n],
-  [Type], [`u8`], [`[u8]`],
+  [Type], [u8], [[u8]],
   [Name], [ID], [Message Data],
 )
 
@@ -93,12 +93,18 @@ The following message `ID`s are available:
 - #link(<streaming-message-ping-request>)[`0x01` - Ping Request]
 - #link(<streaming-message-ping-response>)[`0x02` - Ping Response]
 
+- Service Discovery and Mapping (`0x1.`)
+  - #link(<streaming-message-service-list-request>)[`0x11` - Service List Request]
+  - #link(<streaming-message-service-list-response>)[`0x12` - Service List Response]
+
 - Ping
 - Service List
 - Service Join
 - Authentication
 
 - Channel Data
+
+#pagebreak()
 
 === `0x01` - Ping Request <streaming-message-ping-request>
 
@@ -108,7 +114,7 @@ A requirement of this message is that is must not have any side effects on the s
 #table(
   columns: 4,
   [Position], [0], [1], [n],
-  [Type], [`u8`], [`u8`], [`[u8]`],
+  [Type], [u8], [u8], [[u8]],
   [Value], [`0x01`], [?], [?],
   [Name], [ID], [Length], [Payload],
 )
@@ -122,10 +128,28 @@ This message is the response to the #link(<streaming-message-ping-request>)[Ping
 It confirms presence and activity to the requesting peer.
 The contents of the request `Payload` field must be mirrored exactly.
 
+
 #table(
   columns: 4,
   [Position], [0], [1], [n],
-  [Type], [`u8`], [`u8`], [`[u8]`],
-  [Value], [`0x01`], [?], [?],
+  [Type], [u8], [u8], [[u8]],
+  [Value], [`0x02`], [?], [?],
   [Name], [ID], [Length], [Payload],
 )
+
+#pagebreak()
+
+=== `0x11` - Service List Request <streaming-message-service-list-request>
+
+This message allows a peer to request a list of services another one provides.
+The other peer will the deliver the list of services and their descriptions in a #link(<streaming-message-service-list-response>)[Service List Response].
+
+#table(
+  columns: 2,
+  [Position], [0],
+  [Type], [u8],
+  [Value], [`0x11`],
+  [Name], [ID],
+)
+
+=== `0x12` - Service List Response <streaming-message-service-list-response>

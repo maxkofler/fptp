@@ -97,6 +97,9 @@ The following message `ID`s are available:
   - #link(<streaming-message-service-list-request>)[`0x11` - Service List Request]
   - #link(<streaming-message-service-list-response>)[`0x12` - Service List Response]
 
+- Authentication (`0x2.`)
+  -
+
 - Ping
 - Service List
 - Service Join
@@ -153,3 +156,95 @@ The other peer will the deliver the list of services and their descriptions in a
 )
 
 === `0x12` - Service List Response <streaming-message-service-list-response>
+
+#pagebreak()
+
+== Authentication
+
+FPTP has a built-in authentication mechanism to allow a peer to verify the other peer's identity and decide on whether it should trust the other peer or not.
+Trust in this sense may mean multiple things.
+Each peer decides individually what it exposes to which other peer via authentication or even without authentication.
+This is completely up to the peer and is not dictated by the protocol.
+
+The authentication is handled in a handshake procedure described by the following steps:
+
++ One peer requests an authentication using an #link(<streaming-message-auth-request>)[Authentication Request]
++ The other peer sends a challenge sequence using the #link(<streaming-message-auth-challenge>)[Authentication Challenge] message
++ The requesting peer signs the challenge using its private key
++ The signature is delivered to the other peer using a #link(<streaming-message-auth-proof>)[Authentication Proof] message
++ The other peer confirms or denies the authentication using the #link(<streaming-message-auth-result>)[Authentication Result] message.
+
+=== Authentication Schemes <authentication-schemes>
+
+There are multiple schemes and algorithms that can be used to authenticate a peer.
+
+- RSA SHA256 PSS
+
+=== `0x21` - Authentication Information Request <streaming-message-auth-info-request>
+
+=== `0x22` - Authentication Information Response <streaming-message-auth-info-response>
+
+=== `0x23` - Authentication Request <streaming-message-auth-request>
+
+Using this message, a peer can request a #link(<streaming-message-auth-challenge>)[challenge] from another peer to authenticate itself.
+The requesting peer specifies the authentication scheme it wants to use in the message.
+
+The other peer will respond with either a #link(<streaming-message-auth-challenge>)[authentication challenge] or a #link(<streaming-message-auth-result>)[authentication result], if the request is invalid, inappropriate or cannot be handled due to other reasons.
+
+#table(
+  columns: 3,
+  [Position], [0], [1],
+  [Type], [u8], [u8],
+  [Value], [`0x23`], [?],
+  [Name], [ID], [Scheme],
+)
+
+=== `0x24` - Authentication Challenge <streaming-message-auth-challenge>
+
+This message is the response to a #link(<streaming-message-auth-request>)[authentication request] and contains a challenge byte sequence and the scheme selected by the requesting peer.
+
+The challenge sequence should be aligned with the authentication scheme requirements and its structure, content and generation prerequisites are described in the #link(<authentication-schemes>)[authentication schemes] section.
+
+This message is followed by a #link(<streaming-message-auth-proof>)[authentication proof] or a #link(<streaming-message-auth-result>)[authentication result] in the case that some error is encountered on the opposite peer and the authentication handshake cannot continue.
+
+#table(
+  columns: 5,
+  [Position], [0], [1], [2], [4],
+  [Type], [u8], [u8], [u16], [[u8]],
+  [Value], [`0x24`], [?], [?], [[?]],
+  [Name], [ID], [Scheme], [Challenge Length], [Challenge],
+)
+
+
+=== `0x25` - Authentication Proof <streaming-message-auth-proof>
+
+This message is the response to a #link(<streaming-message-auth-challenge>)[authentication challenge] and is the answer (or proof) of the authenticating peer that it is authorized to access protected resources, whence the 'proof' terminology.
+
+The structure and requirements for the `Proof` field are described in the #link(<authentication-schemes>)[authentication schemes] section.
+
+This message is followed by a #link(<streaming-message-auth-result>)[authentication result] to confirm or deny the authentication.
+
+#table(
+  columns: 5,
+  [Position], [0], [1], [2], [4],
+  [Type], [u8], [u8], [u16], [[u8]],
+  [Value], [`0x25`], [`0x00`], [?], [[?]],
+  [Name], [ID], [Reserved], [Proof Length], [Proof],
+)
+
+=== `0x26` - Authentication Result <streaming-message-auth-result>
+
+This message is a possible follow-up to any authentication message, as it can indicate all kinds of errors, or the success of a authentication handshake.
+This message also marks the end of a authentication handshake and is the last message transmitted in the authentication sequence.
+
+#table(
+  columns: 4,
+  [Position], [0], [1], [2],
+  [Type], [u8], [u8], [u32],
+  [Value], [`0x25`], [`0x00`], [?],
+  [Name], [ID], [Reserved], [Result],
+)
+
+==== Authentication Result Codes
+
+- `0x0001_0000`: Authentication success

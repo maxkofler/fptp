@@ -276,7 +276,7 @@ This message also marks the end of a authentication handshake and is the last me
   [Position], [0], [1], [2],
   [Name], [ID], [Reserved], [Result],
   [Type], [u8], [u8], [u32],
-  [Value], [0x25], [0x00], [?],
+  [Value], [0x26], [0x00], [?],
 )
 
 === Authentication Result Codes

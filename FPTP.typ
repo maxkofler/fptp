@@ -1,7 +1,11 @@
+#set text(
+  size: 10pt,
+)
+
 #set page(
   paper: "a4",
   header: align(left)[
-    The FPTP Protocol
+    The FPTP Protocol v1.0.0
   ],
 )
 
@@ -13,9 +17,6 @@
 #show raw: it => { highlight(it, fill: rgb("ddd"), radius: 2pt, extent: 0.5pt, top-edge: 1.1em, bottom-edge: -0.3em) }
 
 
-#set text(
-  size: 10pt,
-)
 
 #set heading(
   numbering: "1.1.1.",
@@ -32,18 +33,19 @@
 )
 
 #title[The FPTP Protocol]
+Version 1.0.0
 #pagebreak()
 #outline()
 #pagebreak()
 
 = About this Document
 
-This document describes the *Flexible Protocol Tunneling Protocol*, short *SETP*.
+This document describes the *Flexible Protocol Tunneling Protocol*, short *FPTP*.
 This protocol operates on the Application Layer and allows tunneling of other protocols over it.
 
 == Data Type Notation
 
-In this document, the `Rust` syntax is used for describing data types, as its syntax is very clear and concise.
+In this document, the *Rust* syntax is used for describing data types, as its syntax is very clear and concise.
 
 = Overview
 
@@ -60,7 +62,19 @@ All multi-byte values in this protocol are transmitted in *Little Endian*  form.
 
 == Numbering
 
-All numberings and indices start at `0`, as is common in programming terminology.
+All numberings and indices start at *0*, as is common in programming terminology.
+
+== Connection Terminology
+
+The FPTP protocol is designed to be completely bidirectional.
+This allows all possible topologies, from peer-to-peer to server and client models.
+This document, however uses the terms *Server* and *Client* to describe the relationship of two peers in a request and response sequence.
+
+Whenever this document refers to a *Client*, it refers to the requesting peer, which is the peer that initiates an exchange and sends the request.
+
+Whenever this document refers to a *Server*, it means the peer that receives a request and reacts to it.
+
+#pagebreak()
 
 = Streaming Mode
 
@@ -68,10 +82,10 @@ FPTP can run over streaming connections, such as TCP.
 This section of the document describes this operating mode.
 In this mode, the stream is sectioned into messages that may contain authentication, metadata, tunnel data, etc...
 
-In this streaming mode, the protocol relies on the following assumptions:
+In the streaming mode, the protocol relies on the following assumptions:
 
 - Data is guaranteed to be delivered
-- Data is delivered in sequence
+- Data is guaranteed to be delivered in sequence
 
 == Message Structure
 
@@ -84,32 +98,51 @@ The following table shows the overall message structure that is valid for all me
   [Name], [ID], [Message Data],
 )
 
-The `ID` field identifies the message that is delivered on in this frame to allow the receiver to interpret it accordingly.
+The *ID* field identifies the message that is delivered on in this frame to allow the receiver to interpret it accordingly.
 
 == Messages
 
-The following message `ID`s are available:
+The following message IDs are available:
 
-- #link(<streaming-message-ping-request>)[`0x01` - Ping Request]
-- #link(<streaming-message-ping-response>)[`0x02` - Ping Response]
+- Connection Management (0x0x)
+  - #link(<streaming-message-ping-request>)[*0x01* - Ping Request]
+  - #link(<streaming-message-ping-response>)[*0x02* - Ping Response]
 
-- Service Discovery and Mapping (`0x1.`)
-  - #link(<streaming-message-service-list-request>)[`0x11` - Service List Request]
-  - #link(<streaming-message-service-list-response>)[`0x12` - Service List Response]
+- Service Discovery and Mapping (0x1x)
+  - #link(<streaming-message-service-list-request>)[*0x11* - Service List Request]
+  - #link(<streaming-message-service-list-response>)[*0x12* - Service List Response]
 
-- Authentication (`0x2.`)
-  -
+- Authentication (0x2x)
+  - #link(<streaming-message-auth-info-request>)[*0x21* - Authentication Information Request]
+  - #link(<streaming-message-auth-info-response>)[*0x22* - Authentication Information Response]
+  - #link(<streaming-message-auth-request>)[*0x23* - Authentication Request]
+  - #link(<streaming-message-auth-challenge>)[*0x24* - Authentication Challenge]
+  - #link(<streaming-message-auth-proof>)[*0x25* - Authentication Proof]
+  - #link(<streaming-message-auth-result>)[*0x26* - Authentication Resul]
 
-- Ping
-- Service List
-- Service Join
-- Authentication
-
-- Channel Data
 
 #pagebreak()
 
-=== `0x01` - Ping Request <streaming-message-ping-request>
+== Connection Management
+
+=== *0x00* - No Operation <streaming-message-nop>
+
+The No Operation message is exactly what the name implies.
+This message mainly exists to create an escape hatch from a message or to recover from a unreliable state of the communication channel.
+If one client looses track of where it is in the stream of messages, this command can safely be flushed to reset the connection an re-synchronize.
+It can be sent thousands of times, without any side-effects, except the state machine being reset if the listening peer is "lost" in a frame.
+
+A requirement on the receiving end of this message is that it has absolutely no side effects.
+
+#table(
+  columns: 2,
+  [Position], [0],
+  [Name], [ID],
+  [Type], [u8],
+  [Value], [0x00],
+)
+
+=== *0x01* - Ping Request <streaming-message-ping-request>
 
 The Ping Request command allows one side of the connection to check presence of another peer, measure roundtrip times, etc. without any other side effects.
 A requirement of this message is that is must not have any side effects on the sending and receiving side, allowing these messages to be sprinkled into the normal communication flow without the possibility of disrupting anything other.
@@ -117,32 +150,34 @@ A requirement of this message is that is must not have any side effects on the s
 #table(
   columns: 4,
   [Position], [0], [1], [n],
-  [Type], [u8], [u8], [[u8]],
-  [Value], [`0x01`], [?], [?],
   [Name], [ID], [Length], [Payload],
+  [Type], [u8], [u8], [[u8]],
+  [Value], [0x01], [?], [?],
 )
 
 The Ping message allows for up to 255 bytes of arbitrary payload to be sent with it.
 The other peer will respond with a #link(<streaming-message-ping-response>)[Ping Response] that will include an exact copy of the payload data sent in the request.
 
-=== `0x02` - Ping Response <streaming-message-ping-response>
+=== *0x02* - Ping Response <streaming-message-ping-response>
 
 This message is the response to the #link(<streaming-message-ping-request>)[Ping Request] message.
 It confirms presence and activity to the requesting peer.
-The contents of the request `Payload` field must be mirrored exactly.
+The contents of the request *Payload* field must be mirrored exactly.
 
 
 #table(
   columns: 4,
   [Position], [0], [1], [n],
-  [Type], [u8], [u8], [[u8]],
-  [Value], [`0x02`], [?], [?],
   [Name], [ID], [Length], [Payload],
+  [Type], [u8], [u8], [[u8]],
+  [Value], [0x02], [?], [?],
 )
 
 #pagebreak()
 
-=== `0x11` - Service List Request <streaming-message-service-list-request>
+== Service Discovery and Mapping
+
+=== *0x11* - Service List Request <streaming-message-service-list-request>
 
 This message allows a peer to request a list of services another one provides.
 The other peer will the deliver the list of services and their descriptions in a #link(<streaming-message-service-list-response>)[Service List Response].
@@ -150,12 +185,12 @@ The other peer will the deliver the list of services and their descriptions in a
 #table(
   columns: 2,
   [Position], [0],
-  [Type], [u8],
-  [Value], [`0x11`],
   [Name], [ID],
+  [Type], [u8],
+  [Value], [0x11],
 )
 
-=== `0x12` - Service List Response <streaming-message-service-list-response>
+=== *0x12* - Service List Response <streaming-message-service-list-response>
 
 #pagebreak()
 
@@ -175,11 +210,11 @@ The authentication is handled in a handshake procedure described by the followin
 + The other peer confirms or denies the authentication using the #link(<streaming-message-auth-result>)[Authentication Result] message.
 
 
-=== `0x21` - Authentication Information Request <streaming-message-auth-info-request>
+=== *0x21* - Authentication Information Request <streaming-message-auth-info-request>
 
-=== `0x22` - Authentication Information Response <streaming-message-auth-info-response>
+=== *0x22* - Authentication Information Response <streaming-message-auth-info-response>
 
-=== `0x23` - Authentication Request <streaming-message-auth-request>
+=== *0x23* - Authentication Request <streaming-message-auth-request>
 
 Using this message, a peer can request a #link(<streaming-message-auth-challenge>)[challenge] from another peer to authenticate itself.
 The requesting peer specifies the authentication scheme it wants to use in the message.
@@ -193,12 +228,12 @@ More information on the available fingerprint types are available in the #link(<
 #table(
   columns: 5,
   [Position], [0], [1], [2], [3],
-  [Type], [u8], [u8], [u8], [[u8]],
-  [Value], [`0x23`], [?], [?], [[?]],
   [Name], [ID], [Scheme], [Fingerprint Type], [Fingerprint],
+  [Type], [u8], [u8], [u8], [[u8]],
+  [Value], [0x23], [?], [?], [[?]],
 )
 
-=== `0x24` - Authentication Challenge <streaming-message-auth-challenge>
+=== *0x24* - Authentication Challenge <streaming-message-auth-challenge>
 
 This message is the response to a #link(<streaming-message-auth-request>)[authentication request] and contains a challenge byte sequence and the scheme selected by the requesting peer.
 
@@ -209,29 +244,29 @@ This message is followed by a #link(<streaming-message-auth-proof>)[authenticati
 #table(
   columns: 5,
   [Position], [0], [1], [2], [4],
-  [Type], [u8], [u8], [u16], [[u8]],
-  [Value], [`0x24`], [?], [?], [[?]],
   [Name], [ID], [Scheme], [Challenge Length], [Challenge],
+  [Type], [u8], [u8], [u16], [[u8]],
+  [Value], [0x24], [?], [?], [[?]],
 )
 
 
-=== `0x25` - Authentication Proof <streaming-message-auth-proof>
+=== *0x25* - Authentication Proof <streaming-message-auth-proof>
 
 This message is the response to a #link(<streaming-message-auth-challenge>)[authentication challenge] and is the answer (or proof) of the authenticating peer that it is authorized to access protected resources, whence the 'proof' terminology.
 
-The structure and requirements for the `Proof` field are described in the #link(<authentication-schemes>)[authentication schemes] section.
+The structure and requirements for the *Proof* field are described in the #link(<authentication-schemes>)[authentication schemes] section.
 
 This message is followed by a #link(<streaming-message-auth-result>)[authentication result] to confirm or deny the authentication.
 
 #table(
   columns: 5,
   [Position], [0], [1], [2], [4],
-  [Type], [u8], [u8], [u16], [[u8]],
-  [Value], [`0x25`], [`0x00`], [?], [[?]],
   [Name], [ID], [Reserved], [Proof Length], [Proof],
+  [Type], [u8], [u8], [u16], [[u8]],
+  [Value], [0x25], [0x00], [?], [[?]],
 )
 
-=== `0x26` - Authentication Result <streaming-message-auth-result>
+=== *0x26* - Authentication Result <streaming-message-auth-result>
 
 This message is a possible follow-up to any authentication message, as it can indicate all kinds of errors, or the success of a authentication handshake.
 This message also marks the end of a authentication handshake and is the last message transmitted in the authentication sequence.
@@ -239,12 +274,12 @@ This message also marks the end of a authentication handshake and is the last me
 #table(
   columns: 4,
   [Position], [0], [1], [2],
-  [Type], [u8], [u8], [u32],
-  [Value], [`0x25`], [`0x00`], [?],
   [Name], [ID], [Reserved], [Result],
+  [Type], [u8], [u8], [u32],
+  [Value], [0x25], [0x00], [?],
 )
 
-==== Authentication Result Codes
+=== Authentication Result Codes
 
 - `0x0001_0000`: Authentication success
 - `0x0002_0000`: General authentication failure
@@ -257,7 +292,7 @@ There are multiple schemes and algorithms that can be used to authenticate a pee
 
 - #link(<authentication-scheme-rsa-pss-sha256>)[0x10 - RSA-PSS-SHA256]
 
-== 0x10 - RSA-PSS-SHA256 <authentication-scheme-rsa-pss-sha256>
+== *0x10* - RSA-PSS-SHA256 <authentication-scheme-rsa-pss-sha256>
 
 This authentication scheme uses the *RSA* algorithm for signing, *RSA* for padding and *SHA256* to hash the challenge data.
 The serving peer generates a cryptographically random string of binary data that should be at least 32 bytes long and sends it to the requesting peer.
@@ -267,7 +302,7 @@ The requesting peer then hashes the data using *SHA256* and pads it using the *P
 
 - #link(<fingerprint-type-sha256>)[0x10 - SHA256]
 
-== 0x10 - SHA256 <fingerprint-type-sha256>
+== *0x10* - SHA256 <fingerprint-type-sha256>
 
 This type of fingerprint is generated by running the SHA256 cryptographic hash function over the raw binary data of the public key.
 
